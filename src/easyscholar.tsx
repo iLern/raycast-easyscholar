@@ -1,14 +1,21 @@
-import { Action, ActionPanel, Form, Icon, LocalStorage, Toast, showToast, Detail } from "@raycast/api";
+import { Action, ActionPanel, Form, LocalStorage, Grid, List, useNavigation, Detail } from "@raycast/api";
 import React, { useState, useEffect } from 'react';
 import axios from "axios";
 
+import { splitDictToList } from "./util";
+
 const url = "https://www.easyscholar.cc/open/getPublicationRank" 
 
+interface QueryRequest {
+  secretKey: string;
+  publicationName: string;
+}
+
 export default function Main() {
+  const { push } = useNavigation();
   const [secretKey, setSecretKey] = useState<string|undefined>(undefined);
 
   useEffect(() => {
-    // 异步函数需要包在一个异步函数内部
     async function fetchKey() {
       try {
         const key = await LocalStorage.getItem<string>("key");
@@ -18,113 +25,123 @@ export default function Main() {
       }
     }
 
-    // 调用异步函数
     fetchKey();
-  }, []); // 空数组表示只在组件加载时运行一次
+  }, []);
 
-  if (secretKey !== undefined) {
-    // submitted secret key
+  if (secretKey === undefined) {
+    // no secret key
     return (
       <Form actions={
         <ActionPanel title="EasyScholar">
-          <SubmitPublicationName secretKey={secretKey}/>
+          <Action.SubmitForm 
+            title="EasyScholar"
+            onSubmit={(input:QueryRequest) => {
+              push(<SubmitSecretKey secretKey={input.secretKey} />)
+            }}
+          />
         </ActionPanel>
       }>
-        <Form.TextArea id="publicationName" title="Publication Name" placeholder="Enter Publication Name..."></Form.TextArea>
+        <Form.TextArea id="secretKey" title="Secret" placeholder="Enter EasyScholar SecretKey..."></Form.TextArea>
       </Form>
     )
   } else {
     return (
-        <Form actions={
-          <ActionPanel title="EasyScholar">
-            <SubmitSecretKey />
-          </ActionPanel>
-        }>
-            <Form.TextArea id="secretKey" title="Secret" placeholder="Enter EasyScholar SecretKey..."></Form.TextArea>
-        </Form>
-      )
+      <Form actions={
+        <ActionPanel title="EasyScholar">
+          <Action.SubmitForm 
+            title="EasyScholar"
+            onSubmit={(input:QueryRequest) => {
+              push(<QueryRank secretKey={secretKey} publicationName={input.publicationName} />)
+            }}
+          />
+        </ActionPanel>
+      }>
+        <Form.TextArea id="publicationName" title="PublicationName" placeholder="Enter PublicationName..."></Form.TextArea>
+      </Form>
+    )
   }
 }
 
-function SubmitSecretKey() {
-  async function handleSubmit(values: {secretKey: string}) {
-    if (!values.secretKey) {
-      showToast({
-        style: Toast.Style.Failure,
-        title: "Secret is required",
-      });
-      return;
+function SubmitSecretKey(props: {secretKey: string}) {
+  const { push } = useNavigation();
+
+  useEffect(() => {
+    async function identifyKey() {
+      axios.get(url, {
+        params: {
+          secretKey: props.secretKey
+        }
+      }).then(async (res) => {
+        console.log(res.data);
+        if (res.data.code == 40004) { // correct key
+          // set to Storage
+          await LocalStorage.setItem("key", props.secretKey);
+        }
+      }); 
     }
 
-    const toast = await showToast({
-      style: Toast.Style.Animated,
-      title: "Submiting SecretKey",
-    });
-
-    axios.get(url, {
-      params: {
-        secretKey: values.secretKey
-      }
-    }).then(async (res) => {
-      console.log(res.data);
-      if (res.data.code == 40002) { // incorrect key
-        toast.style = Toast.Style.Failure;
-        toast.message = "Invalid Secret Key";
-        toast.title= "login failed"; 
-      } else if (res.data.code == 40004) { //correct key but do not have publication name
-        toast.style = Toast.Style.Success;
-        toast.message = "Secret Key authenticated";
-        toast.title = "login";
-
-        // set to Storage
-        await LocalStorage.setItem("key", values.secretKey);
-
-        // redirect to submit publication name
-        return (
-          <Form actions={
-            <ActionPanel>
-              <SubmitPublicationName secretKey={values.secretKey}/>
-            </ActionPanel>
-          }>
-            <Form.TextArea id="publicationName" title="Publication Name" placeholder="Enter Publication Name..."></Form.TextArea>
-          </Form>
-        )
-      }
-    });
-  }
-
+    identifyKey();
+  }, []);
+    
   return (
-    <Action.SubmitForm icon={Icon.Upload} title="Submit SecretKey" onSubmit={handleSubmit} />
-  );
+    <Form actions={
+      <ActionPanel title="EasyScholar">
+        <Action.SubmitForm 
+          title="EasyScholar"
+          onSubmit={(input:QueryRequest) => {
+            push(<QueryRank secretKey={props.secretKey} publicationName={input.publicationName} />)
+          }}
+        />
+      </ActionPanel>
+    }>
+      <Form.TextArea id="publicationName" title="PublicationName" placeholder="Enter PublicationName..."></Form.TextArea>
+    </Form>
+  )
 }
 
-function SubmitPublicationName(props: {secretKey: string}) {
-  async function handleSubmit(values: {publicationName: string}) {
-    if (!values.publicationName) {
-      showToast({
-        style: Toast.Style.Failure,
-        title: "publicationName is required",
-      });
-      return;
+function QueryRank(props: {secretKey: string, publicationName: string}) {
+  const [queryResult, setQueryResult] = useState<Map<string, string>>(new Map<string, string>());
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function queryRank() {
+      try {
+        const res = await axios.get(url, {
+          params: {
+            secretKey: props.secretKey,
+            publicationName: props.publicationName,
+          },
+        });
+
+        if (res.data.code === 200) {
+          const queryResultData = res.data.data.officialRank.all;
+          setQueryResult(queryResultData);
+        }
+
+        setIsLoading(false); // 设置异步操作完成标志
+      } catch (error) {
+        console.error(error);
+        setIsLoading(false); // 设置异步操作完成标志（出错时也要设置）
+      }
     }
 
-    const toast = await showToast({
-      style: Toast.Style.Animated,
-      title: "Submiting publicationName",
-    });
+    queryRank();
+  }, [props.secretKey, props.publicationName]); // 添加props依赖，确保在props改变时重新执行异步操作
 
-    axios.get(url, {
-      params: {
-        secretKey: props.secretKey,
-        publicationName: values.publicationName
-      }
-    }).then(async (res) => {
-      console.log(res.data.data.officialRank.all);
-      toast.style = Toast.Style.Success;
-    });
+  // 等待异步操作完成后再渲染结果
+  if (isLoading) {
+    return (
+      <Detail markdown={"# Loading..."}></Detail>
+    );
   }
 
+  console.log(queryResult);
+  const rank = splitDictToList(queryResult);
+  console.log(rank);
+
   return (
-      <Action.SubmitForm icon={Icon.Upload} title="Submit Publication Name" onSubmit={handleSubmit} />
+    <List>
+      {(rank.map((item) => <List.Item title={item.publicationName} subtitle={item.rank}></List.Item>))}
+    </List>
   )
 }

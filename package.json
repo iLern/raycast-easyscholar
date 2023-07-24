@@ -8,9 +8,9 @@
   "license": "MIT",
   "commands": [
     {
-      "name": "index",
+      "name": "easyscholar",
       "title": "Easy Scholar",
-      "description": "Template with a plain detail view",
+      "description": "Search the rank of publication by easyscholer",
       "mode": "view"
     }
   ],

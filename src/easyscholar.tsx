@@ -141,7 +141,7 @@ function QueryRank(props: {secretKey: string, publicationName: string}) {
 
   return (
     <List>
-      {(rank.map((item) => <List.Item title={item.publicationName} subtitle={item.rank}></List.Item>))}
+      {(rank.map((item, index) => <List.Item key={index} title={item.publicationName} subtitle={item.rank}></List.Item>))}
     </List>
   )
 }

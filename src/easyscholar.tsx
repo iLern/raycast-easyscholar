@@ -146,8 +146,8 @@ function SubmitSecretKey(props: { secretKey: string }) {
 }
 
 function QueryRank(props: { secretKey: string; publicationName: string }) {
-    const [queryResult, setQueryResult] = useState<Map<string, string>>(
-        new Map<string, string>(),
+    const [queryResult, setQueryResult] = useState<{[key: string]: string}>(
+        {},
     )
     const [isLoading, setIsLoading] = useState(true)
 

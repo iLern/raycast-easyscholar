@@ -1,4 +1,4 @@
-const dataSet = {
+const dataSet: {[key: string]: string} = {
     swufe: '西南财经大学',
     cqu: '重庆大学',
     sciif: 'SCI影响因子-JCR',
@@ -44,7 +44,7 @@ interface PublicationInfo {
 }
 
 export function splitDictToList(
-    inputDict: Map<string, string>,
+    inputDict: {[key: string]: string},
 ): PublicationInfo[] {
     const result: PublicationInfo[] = []
     for (const key in inputDict) {

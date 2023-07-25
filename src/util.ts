@@ -35,25 +35,26 @@ const dataSet = {
     pku: '北大核心',
     cssci: '南大核心',
     ahci: 'A&HCI',
-    scu: '四川大学'
-};
-  
-  
-interface PublicationInfo {
-    publicationName: string;
-    rank: string;
+    scu: '四川大学',
 }
 
-export function splitDictToList(inputDict: Map<string, string>): PublicationInfo[] {
-    const result: PublicationInfo[] = [];
+interface PublicationInfo {
+    publicationName: string
+    rank: string
+}
+
+export function splitDictToList(
+    inputDict: Map<string, string>,
+): PublicationInfo[] {
+    const result: PublicationInfo[] = []
     for (const key in inputDict) {
         if (Object.prototype.hasOwnProperty.call(inputDict, key)) {
             const publicationInfo: PublicationInfo = {
-            publicationName: dataSet[key],
-            rank: inputDict[key],
-            };
-            result.push(publicationInfo);
+                publicationName: dataSet[key],
+                rank: inputDict[key],
+            }
+            result.push(publicationInfo)
         }
     }
-    return result;
+    return result
 }
